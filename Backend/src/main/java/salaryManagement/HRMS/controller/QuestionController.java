@@ -3,6 +3,7 @@ package salaryManagement.HRMS.controller;
 
 import salaryManagement.HRMS.dto.QuestionAnswerResponse;
 import salaryManagement.HRMS.dto.QuestionRequest;
+import salaryManagement.HRMS.model.Employee;
 import salaryManagement.HRMS.service.QuestionAnswerService;
 
 import jakarta.validation.Valid;
@@ -27,4 +28,5 @@ public class QuestionController {
 
         return questionAnswerService.answer(request);
     }
+
 }

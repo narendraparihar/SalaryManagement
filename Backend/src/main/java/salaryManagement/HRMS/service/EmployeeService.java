@@ -100,4 +100,22 @@ public class EmployeeService {
         Employee employee = getEmployeeById(id);
         employeeRepository.delete(employee);
     }
+
+
+    @Transactional(readOnly = true)
+    public Page<Employee> searchEmployees(
+            String keyword,
+            Pageable pageable
+    ) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Search keyword must not be empty"
+            );
+        }
+
+        return employeeRepository.searchEmployees(
+                keyword.trim(),
+                pageable
+        );
+    }
 }

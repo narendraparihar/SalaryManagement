@@ -81,4 +81,13 @@ public class EmployeeController {
         employeeService.deleteEmployee(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/search")
+    public Page<Employee> searchEmployees(
+            @RequestParam String keyword,
+            @PageableDefault(size = 20, page = 0)
+            Pageable pageable
+    ) {
+        return employeeService.searchEmployees(keyword, pageable);
+    }
 }

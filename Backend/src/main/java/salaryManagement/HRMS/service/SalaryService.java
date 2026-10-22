@@ -1,6 +1,9 @@
 
 package salaryManagement.HRMS.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableArgumentResolver;
 import salaryManagement.HRMS.dto.SalaryCreateRequest;
 import salaryManagement.HRMS.dto.SalaryPatchRequest;
 import salaryManagement.HRMS.dto.SalaryResponse;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -125,15 +129,10 @@ public class SalaryService {
     }
 
     @Transactional(Transactional.TxType.SUPPORTS)
-    public List<SalaryResponse> getCurrentSalaries() {
-
+    public Page<SalaryResponse> getCurrentSalaries(Pageable pageable) {
         LocalDate today = LocalDate.now();
 
-        return salaryRepository
-                .findByEffectiveFromLessThanEqualAndEffectiveToIsNull(today)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return salaryRepository.findCurrentSalaries(today, pageable);
     }
 
     private void validateDates(
@@ -171,12 +170,30 @@ public class SalaryService {
         return new SalaryResponse(
                 salary.getId(),
                 salary.getEmployee().getId(),
+                salary.getEmployee().getFirstName() + " " + salary.getEmployee().getLastName(),
                 salary.getAmount(),
                 salary.getCurrency(),
-                salary.getEffectiveFrom(),
-                salary.getEffectiveTo(),
+                salary.getCreatedBy(),
                 salary.getCreatedAt(),
-                salary.getCreatedBy()
+                salary.getEffectiveFrom(),
+                salary.getEffectiveTo()
+        );
+    }
+
+    @Transactional(Transactional.TxType.SUPPORTS)
+    public Page<SalaryResponse> searchSalaries(
+            String keyword,
+            Pageable pageable
+    ) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Search keyword must not be empty"
+            );
+        }
+
+        return salaryRepository.searchSalaries(
+                keyword.trim(),
+                pageable
         );
     }
 }
