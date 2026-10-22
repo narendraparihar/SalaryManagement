@@ -49,7 +49,7 @@ public class Salary {
     private LocalDate effectiveTo;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    private LocalDate createdAt;
 
     @Column(name = "created_by", nullable = false, updatable = false)
     private String createdBy;

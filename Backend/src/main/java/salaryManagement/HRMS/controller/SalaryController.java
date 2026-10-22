@@ -1,6 +1,10 @@
 
 package salaryManagement.HRMS.controller;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import salaryManagement.HRMS.dto.SalaryCreateRequest;
 import salaryManagement.HRMS.dto.SalaryPatchRequest;
 import salaryManagement.HRMS.dto.SalaryResponse;
@@ -61,7 +65,19 @@ public class SalaryController {
 
     // GET /salaries/current
     @GetMapping("/salaries/current")
-    public List<SalaryResponse> getCurrentSalaries() {
-        return salaryService.getCurrentSalaries();
+    public Page<SalaryResponse> getCurrentSalaries(
+            @PageableDefault(size = 20, page = 0)
+            Pageable pageable
+    ) {
+        return salaryService.getCurrentSalaries(pageable);
+    }
+
+    @GetMapping("/salaries/search")
+    public Page<SalaryResponse> searchSalaries(
+            @RequestParam String keyword,
+            @PageableDefault(size = 20, page = 0)
+            Pageable pageable
+    ) {
+        return salaryService.searchSalaries(keyword, pageable);
     }
 }
