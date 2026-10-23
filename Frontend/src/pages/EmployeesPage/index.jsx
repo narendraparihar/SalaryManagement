@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchWithAuth } from '../api';
-import AddEmployeeForm from './AddEmployeeForm';
+import { fetchWithAuth } from '../../api';
+import AddEmployeeForm from '../AddEmployeeForm';
+import './style.scss';
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const SEARCH_DEBOUNCE_MS = 350;

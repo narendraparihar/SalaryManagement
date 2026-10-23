@@ -1,0 +1,62 @@
+.add-employee-panel {
+  margin-bottom: 16px;
+  padding: 19px;
+}
+
+.add-employee-panel .panel-heading {
+  margin-bottom: 16px;
+}
+
+.employee-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.employee-form label {
+  display: grid;
+  gap: 6px;
+  color: #586860;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.employee-form input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dce4de;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.employee-form input:focus {
+  border-color: var(--green);
+  outline: 2px solid rgb(24 120 95 / 12%);
+}
+
+.employee-form-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.employee-form .primary-button:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
+.employee-form-error {
+  margin: 0 0 13px;
+  color: #9d503b;
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .employee-form {
+    grid-template-columns: 1fr;
+  }
+}

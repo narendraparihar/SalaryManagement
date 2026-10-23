@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import AuthPage from './AuthPage';
+import AuthPage from './index';
 
 function CurrentPath() {
   const location = useLocation();

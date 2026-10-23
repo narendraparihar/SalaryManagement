@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchWithAuth } from '../api';
+import { fetchWithAuth } from '../../api';
+import './style.scss';
 
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+const RECENT_EMPLOYEE_LIMIT = 5;
+const DEPARTMENT_SALARIES_ENDPOINT = '/api/v1/analytics/salaries/by-department';
 
 function formatDate(date) {
   if (!date) return '—';
@@ -23,14 +25,25 @@ function getInitials(employee) {
   return `${employee.firstName?.[0] || ''}${employee.lastName?.[0] || ''}`.toUpperCase() || '?';
 }
 
+function formatCurrency(amount, currencyCode) {
+  return new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency: currencyCode,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 function Home() {
   const navigate = useNavigate();
   const [employeesPage, setEmployeesPage] = useState(null);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
+  const [departmentSalaries, setDepartmentSalaries] = useState([]);
+  const [isDepartmentSalariesLoading, setIsDepartmentSalariesLoading] = useState(true);
+  const [departmentSalariesError, setDepartmentSalariesError] = useState('');
+  const [departmentSalariesReload, setDepartmentSalariesReload] = useState(0);
+  const [selectedSalaryCurrency, setSelectedSalaryCurrency] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -41,8 +54,8 @@ function Home() {
 
       try {
         const query = new URLSearchParams({
-          page: String(pageIndex),
-          size: String(pageSize),
+          page: '0',
+          size: String(RECENT_EMPLOYEE_LIMIT),
           sort: 'createdAt,desc',
         });
         const token = window.localStorage.getItem('accessToken');
@@ -80,12 +93,69 @@ function Home() {
 
     loadEmployees();
     return () => controller.abort();
-  }, [pageIndex, pageSize, reload, navigate]);
+  }, [reload, navigate]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadDepartmentSalaries() {
+      setIsDepartmentSalariesLoading(true);
+      setDepartmentSalariesError('');
+
+      try {
+        const token = window.localStorage.getItem('accessToken');
+        const response = await fetchWithAuth(`${API_BASE_URL}${DEPARTMENT_SALARIES_ENDPOINT}`, {
+          headers: token ? { Authorization: 'Bearer ' + token } : {},
+          signal: controller.signal,
+        }, navigate);
+
+        if (response.status === 401 || response.status === 403) return;
+        if (!response.ok) {
+          throw new Error(`Unable to load salary by department (HTTP ${response.status}).`);
+        }
+
+        const result = await response.json();
+        if (!Array.isArray(result) || result.some((record) => (
+          !record
+          || typeof record.departmentName !== 'string'
+          || !record.departmentName
+          || typeof record.currencyCode !== 'string'
+          || !/^[A-Z]{3}$/.test(record.currencyCode)
+          || typeof record.totalSalary !== 'number'
+          || !Number.isFinite(record.totalSalary)
+        ))) {
+          throw new Error('The salary-by-department API returned invalid data.');
+        }
+
+        setDepartmentSalaries(result);
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') {
+          setDepartmentSalariesError(
+            requestError.message || 'Unable to connect to salary by department API.',
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsDepartmentSalariesLoading(false);
+      }
+    }
+
+    loadDepartmentSalaries();
+    return () => controller.abort();
+  }, [departmentSalariesReload, navigate]);
 
   const page = employeesPage;
-  const firstRecord = page && page.totalElements > 0 ? (page.number * page.size) + 1 : 0;
-  const lastRecord = page ? Math.min((page.number + 1) * page.size, page.totalElements) : 0;
-  const pageCount = Math.max(page?.totalPages || 0, 1);
+  const recentEmployees = page?.content.slice(0, RECENT_EMPLOYEE_LIMIT) || [];
+  const salaryCurrencies = [...new Set(departmentSalaries.map((record) => record.currencyCode))].sort();
+  const activeSalaryCurrency = salaryCurrencies.includes(selectedSalaryCurrency)
+    ? selectedSalaryCurrency
+    : salaryCurrencies[0] || '';
+  const displayedDepartmentSalaries = departmentSalaries.filter(
+    (record) => record.currencyCode === activeSalaryCurrency,
+  );
+  const maxDepartmentSalary = Math.max(
+    0,
+    ...displayedDepartmentSalaries.map((record) => record.totalSalary),
+  );
   const today = new Intl.DateTimeFormat('en', {
     weekday: 'long',
     month: 'long',
@@ -111,37 +181,63 @@ function Home() {
           <p className="metric-foot">From the employee directory</p>
         </article>
         <article className="metric-card">
-          <div className="metric-topline"><span>Monthly payroll</span><span className="metric-icon pay-icon">$</span></div>
-          <strong className="metric-value">$842,600</strong>
-          <p className="metric-foot"><span className="positive-change">+ 2.8%</span> <span>vs. last month</span></p>
-        </article>
-        <article className="metric-card">
           <div className="metric-topline"><span>Open positions</span><span className="metric-icon role-icon">OP</span></div>
           <strong className="metric-value">7</strong>
           <p className="metric-foot"><span className="neutral-change">2 closing soon</span></p>
         </article>
-        <article className="metric-card metric-card-highlight">
-          <div className="metric-topline"><span>Pending approvals</span><span className="metric-icon approval-icon">!</span></div>
-          <strong className="metric-value">4</strong>
-          <p className="metric-foot"><a href="#/salaries">Review requests <span aria-hidden="true">-&gt;</span></a></p>
-        </article>
       </section>
 
       <section className="dashboard-grid">
-        <article className="panel payroll-panel">
+        <article className="panel salary-panel">
           <div className="panel-heading">
-            <div><p className="eyebrow">PEOPLE COSTS</p><h2>Payroll overview</h2></div>
+            <div><p className="eyebrow">PEOPLE COSTS</p><h2>Salary by department</h2></div>
             <a className="text-link" href="#/analytics">View analytics <span aria-hidden="true">-&gt;</span></a>
           </div>
-          <div className="chart-summary"><strong>$842.6k</strong><span><b>+ 2.8%</b> from September</span></div>
-          <div className="chart" role="img" aria-label="Monthly payroll from May to October, rising from 760 thousand to 843 thousand dollars">
-            <div className="chart-y-labels"><span>$900k</span><span>$800k</span><span>$700k</span></div>
-            <div className="chart-plot">
-              <div className="chart-gridline gridline-top" /><div className="chart-gridline gridline-middle" /><div className="chart-gridline gridline-bottom" />
-              <div className="bar-set"><i style={{ height: '48%' }} /><i style={{ height: '55%' }} /><i style={{ height: '59%' }} /><i style={{ height: '64%' }} /><i style={{ height: '70%' }} /><i className="current-bar" style={{ height: '78%' }} /></div>
-              <div className="chart-x-labels"><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div>
+          {departmentSalariesError ? (
+            <div className="salary-chart-message" role="alert">
+              <span>{departmentSalariesError}</span>
+              <button type="button" onClick={() => setDepartmentSalariesReload((current) => current + 1)}>Retry</button>
             </div>
-          </div>
+          ) : isDepartmentSalariesLoading ? (
+            <p className="salary-chart-message" role="status">Loading department salaries…</p>
+          ) : departmentSalaries.length === 0 ? (
+            <p className="salary-chart-message">No department salary data found.</p>
+          ) : (
+            <>
+              <div className="salary-chart-controls">
+                <p className="salary-chart-note">Bar lengths are scaled within the selected currency.</p>
+                <label className="salary-currency-control">
+                  Currency
+                  <select
+                    aria-label="Salary chart currency"
+                    value={activeSalaryCurrency}
+                    onChange={(event) => setSelectedSalaryCurrency(event.target.value)}
+                  >
+                    {salaryCurrencies.map((currencyCode) => (
+                      <option key={currencyCode} value={currencyCode}>{currencyCode}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <ul className="salary-department-chart" aria-label={`Total salary by department in ${activeSalaryCurrency}`}>
+                {displayedDepartmentSalaries.map((record, index) => {
+                  const barWidth = maxDepartmentSalary > 0
+                    ? (record.totalSalary / maxDepartmentSalary) * 100
+                    : 0;
+
+                  return (
+                    <li className="salary-department-row" key={`${record.departmentId}-${record.currencyCode}-${index}`}>
+                      <span className="salary-department-name">{record.departmentName}</span>
+                      <span className="salary-bar-track" aria-hidden="true">
+                        <span className="salary-bar" style={{ width: `${barWidth}%` }} />
+                      </span>
+                      <strong className="salary-department-value">{formatCurrency(record.totalSalary, record.currencyCode)}</strong>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </article>
 
         <article className="panel approvals-panel">
@@ -177,9 +273,9 @@ function Home() {
                 <tr><td colSpan="5" className="employee-table-message">Loading employees…</td></tr>
               ) : error ? (
                 <tr><td colSpan="5" className="employee-table-message">Employee records could not be loaded.</td></tr>
-              ) : page.content.length === 0 ? (
+              ) : recentEmployees.length === 0 ? (
                 <tr><td colSpan="5" className="employee-table-message">No employees found.</td></tr>
-              ) : page.content.map((employee) => (
+              ) : recentEmployees.map((employee) => (
                 <tr key={employee.id}>
                   <td><span className="table-person"><span className="avatar">{getInitials(employee)}</span><strong>{employee.firstName} {employee.lastName}</strong></span></td>
                   <td>{employee.departmentId ? `Department ${employee.departmentId}` : '—'}</td>
@@ -190,29 +286,6 @@ function Home() {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="employee-pagination">
-          <span className="employee-page-summary">
-            {page ? `Showing ${firstRecord}-${lastRecord} of ${page.totalElements}` : 'Showing — employees'}
-          </span>
-          <label className="page-size-control">
-            Rows per page
-            <select
-              aria-label="Rows per page"
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPageIndex(0);
-              }}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
-          <span className="page-indicator">Page {page ? page.number + 1 : pageIndex + 1} of {pageCount}</span>
-          <div className="pagination-buttons">
-            <button type="button" onClick={() => setPageIndex((current) => current - 1)} disabled={!page || page.first || isLoading} aria-label="Previous page">Previous</button>
-            <button type="button" onClick={() => setPageIndex((current) => current + 1)} disabled={!page || page.last || isLoading} aria-label="Next page">Next</button>
-          </div>
         </div>
       </section>
     </div>
