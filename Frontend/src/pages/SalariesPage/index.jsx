@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchWithAuth } from '../api';
+import { fetchWithAuth } from '../../api';
+import './style.scss';
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 const SEARCH_DEBOUNCE_MS = 350;

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import AddEmployeeForm from './AddEmployeeForm';
+import AddEmployeeForm from './index';
 
 beforeEach(() => {
   window.localStorage.setItem('accessToken', 'test-token');

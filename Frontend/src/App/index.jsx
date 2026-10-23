@@ -1,10 +1,10 @@
 import { HashRouter, useLocation } from 'react-router-dom';
-import './App.css';
-import AuthPage from './pages/AuthPage';
-import EmployeesPage from './pages/EmployeesPage';
-import Home from './pages/Home';
-import RoutePage from './pages/RoutePage';
-import SalariesPage from './pages/SalariesPage';
+import './style.scss';
+import AuthPage from '../pages/AuthPage';
+import AnalyticsPage from '../pages/AnalyticsPage';
+import EmployeesPage from '../pages/EmployeesPage';
+import Home from '../pages/Home';
+import SalariesPage from '../pages/SalariesPage';
 
 const navigation = [
   { path: '/', label: 'Overview', marker: 'OV' },
@@ -13,27 +13,13 @@ const navigation = [
   { path: '/analytics', label: 'Analytics', marker: 'AN' },
 ];
 
-const sections = {
-  '/analytics': {
-    title: 'Analytics',
-    description: 'A clear view of the numbers behind your team.',
-    columns: ['Metric', 'This month', 'Last month', 'Change'],
-    rows: [
-      ['Headcount', '128', '124', '+3.2%'],
-      ['Monthly payroll', '$842,600', '$819,400', '+2.8%'],
-      ['Open positions', '7', '9', '-22.2%'],
-    ],
-  },
-};
-
 function AppContent() {
   const route = useLocation().pathname;
 
-  const activeSection = sections[route];
   const isDashboard = route === '/' || route === '/dashboard';
   const pageTitle = isDashboard
     ? 'Overview'
-    : navigation.find((item) => item.path === route)?.label || activeSection?.title || 'Page not found';
+    : navigation.find((item) => item.path === route)?.label || 'Page not found';
 
   if (route === '/login' || route === '/signup') {
     return <AuthPage mode={route.slice(1)} />;
@@ -84,7 +70,7 @@ function AppContent() {
         </header>
 
         <main className="main-content">
-          {isDashboard ? <Home /> : route === '/employees' ? <EmployeesPage /> : route === '/salaries' ? <SalariesPage /> : activeSection ? <RoutePage section={activeSection} /> : (
+          {isDashboard ? <Home /> : route === '/employees' ? <EmployeesPage /> : route === '/salaries' ? <SalariesPage /> : route === '/analytics' ? <AnalyticsPage /> : (
             <section className="not-found">
               <p className="eyebrow">404 / NOT FOUND</p>
               <h1>This page isn't here.</h1>

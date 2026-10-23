@@ -48,12 +48,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 request.getHeader("Authorization");
 
 
-        System.out.println("JWT filter invoked for: "
-                + request.getRequestURI());
-
-        System.out.println("Bearer token present: "
-                + (authorizationHeader != null
-                && authorizationHeader.startsWith("Bearer ")));
 
         // No bearer token: continue. Protected endpoints will
         // be rejected by Spring Security if authentication is required.

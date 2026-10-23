@@ -1,0 +1,21 @@
+.employee-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.employees-table {
+  min-width: 900px;
+}
+
+@media (max-width: 760px) {
+  .employee-page-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .employee-page-actions .primary-button {
+    align-self: flex-start;
+  }
+}

@@ -1,0 +1,16 @@
+.route-table th:first-child,
+.route-table td:first-child {
+  padding-left: 0;
+}
+
+.route-table td strong {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .route-table {
+    min-width: 540px;
+  }
+}

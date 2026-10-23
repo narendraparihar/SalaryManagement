@@ -39,3 +39,16 @@ test('navigates to the employee route', async () => {
   fireEvent.click(navigation.getByRole('link', { name: /employees/i }));
   expect(await screen.findByRole('heading', { name: /employees/i })).toBeInTheDocument();
 });
+
+test('navigates to the dedicated analytics page', async () => {
+  render(<App />);
+  const navigation = within(screen.getByRole('navigation', { name: /main navigation/i }));
+  fireEvent.click(navigation.getByRole('link', { name: /analytics/i }));
+
+  expect(await screen.findByRole('heading', { name: /analytics/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /salary by country/i })).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith(
+    'http://localhost:8080/api/v1/overview',
+    expect.any(Object),
+  );
+});
