@@ -6,6 +6,8 @@ import './style.scss';
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 const RECENT_EMPLOYEE_LIMIT = 5;
 const DEPARTMENT_SALARIES_ENDPOINT = '/api/v1/analytics/salaries/by-department';
+const EXCHANGE_RATES_ENDPOINT = 'https://api.frankfurter.dev/v2/rates';
+const SUPPORTED_CURRENCIES = ['AUD', 'CAD', 'EUR', 'GBP', 'INR', 'SGD', 'USD'];
 
 function formatDate(date) {
   if (!date) return '—';
@@ -33,6 +35,12 @@ function formatCurrency(amount, currencyCode) {
   }).format(amount);
 }
 
+function formatExchangeRate(rate) {
+  return new Intl.NumberFormat('en', {
+    maximumFractionDigits: 6,
+  }).format(rate);
+}
+
 function Home() {
   const navigate = useNavigate();
   const [employeesPage, setEmployeesPage] = useState(null);
@@ -44,6 +52,11 @@ function Home() {
   const [departmentSalariesError, setDepartmentSalariesError] = useState('');
   const [departmentSalariesReload, setDepartmentSalariesReload] = useState(0);
   const [selectedSalaryCurrency, setSelectedSalaryCurrency] = useState('');
+  const [exchangeRateBase, setExchangeRateBase] = useState('INR');
+  const [exchangeRates, setExchangeRates] = useState([]);
+  const [isExchangeRatesLoading, setIsExchangeRatesLoading] = useState(true);
+  const [exchangeRatesError, setExchangeRatesError] = useState('');
+  const [exchangeRatesReload, setExchangeRatesReload] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -143,6 +156,50 @@ function Home() {
     return () => controller.abort();
   }, [departmentSalariesReload, navigate]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadExchangeRates() {
+      setIsExchangeRatesLoading(true);
+      setExchangeRatesError('');
+
+      try {
+        const query = new URLSearchParams({ base: exchangeRateBase });
+        const response = await fetch(`${EXCHANGE_RATES_ENDPOINT}?${query}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Unable to load exchange rates (HTTP ${response.status}).`);
+        }
+
+        const result = await response.json();
+        if (!Array.isArray(result) || result.length === 0 || result.some((record) => (
+          !record
+          || typeof record.quote !== 'string'
+          || !/^[A-Z]{3}$/.test(record.quote)
+          || typeof record.rate !== 'number'
+          || !Number.isFinite(record.rate)
+          || typeof record.date !== 'string'
+        ))) {
+          throw new Error('The exchange rates API returned invalid data.');
+        }
+
+        const supportedRates = result.filter((record) => SUPPORTED_CURRENCIES.includes(record.quote));
+        setExchangeRates(supportedRates);
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') {
+          setExchangeRatesError(requestError.message || 'Unable to connect to the exchange rates API.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsExchangeRatesLoading(false);
+      }
+    }
+
+    loadExchangeRates();
+    return () => controller.abort();
+  }, [exchangeRateBase, exchangeRatesReload]);
+
   const page = employeesPage;
   const recentEmployees = page?.content.slice(0, RECENT_EMPLOYEE_LIMIT) || [];
   const salaryCurrencies = [...new Set(departmentSalaries.map((record) => record.currencyCode))].sort();
@@ -227,6 +284,58 @@ function Home() {
                         <span className="salary-bar" style={{ width: `${barWidth}%` }} />
                       </span>
                       <strong className="salary-department-value">{formatCurrency(record.totalSalary, record.currencyCode)}</strong>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </article>
+
+        <article className="panel exchange-rate-panel">
+          <div className="panel-heading">
+            <div><p className="eyebrow">LIVE CURRENCY</p><h2>Latest exchange rates</h2></div>
+            <label className="salary-currency-control">
+              Base
+              <select
+                aria-label="Exchange rate base currency"
+                value={exchangeRateBase}
+                onChange={(event) => setExchangeRateBase(event.target.value)}
+              >
+                {SUPPORTED_CURRENCIES.map((currencyCode) => (
+                  <option key={currencyCode} value={currencyCode}>{currencyCode}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {exchangeRatesError ? (
+            <div className="salary-chart-message" role="alert">
+              <span>{exchangeRatesError}</span>
+              <button type="button" onClick={() => setExchangeRatesReload((current) => current + 1)}>Retry</button>
+            </div>
+          ) : isExchangeRatesLoading ? (
+            <p className="salary-chart-message" role="status">Loading exchange rates…</p>
+          ) : (
+            <>
+              <p className="exchange-rate-date">
+                Value of 1 {exchangeRateBase} in each currency · latest available rates
+              </p>
+              <ul className="exchange-rate-list" aria-label={`Exchange rates with ${exchangeRateBase} as base`}>
+                {SUPPORTED_CURRENCIES.map((currencyCode) => {
+                  const currencyRate = exchangeRates.find((record) => record.quote === currencyCode);
+                  const rate = currencyCode === exchangeRateBase ? 1 : currencyRate?.rate;
+
+                  return (
+                    <li className="exchange-rate-row" key={currencyCode}>
+                      <span className="exchange-rate-currency">
+                        <strong>{currencyCode}</strong>
+                        <small>
+                          {currencyCode === exchangeRateBase
+                            ? 'Base currency'
+                            : currencyRate ? formatDate(currencyRate.date) : 'Unavailable'}
+                        </small>
+                      </span>
+                      <strong>{rate === undefined ? '—' : formatExchangeRate(rate)}</strong>
                     </li>
                   );
                 })}
