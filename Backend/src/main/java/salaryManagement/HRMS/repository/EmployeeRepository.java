@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import salaryManagement.HRMS.model.Employee;
+import salaryManagement.HRMS.repository.projection.EmployeeListProjection;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,41 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         """)
     Page<Employee> searchEmployees(
             @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+            SELECT
+                e.id AS "id",
+                e.employee_number AS "employeeNumber",
+                e.first_name AS "firstName",
+                e.last_name AS "lastName",
+                e.email AS "email",
+                e.country_code AS "countryCode",
+                e.department_id AS "departmentId",
+                dep.name AS "departmentName",
+                e.designation_id AS "designationId",
+                des.title AS "designationName",
+                e.employment_status AS "status",
+                e.hire_date AS "hireDate"
+            FROM employees e
+            LEFT JOIN departments dep
+                ON dep.id = e.department_id
+            LEFT JOIN designations des
+                ON des.id = e.designation_id
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM employees e
+            LEFT JOIN departments dep
+                ON dep.id = e.department_id
+            LEFT JOIN designations des
+                ON des.id = e.designation_id
+            """,
+            nativeQuery = true
+    )
+    Page<EmployeeListProjection> findAllEmployees(
             Pageable pageable
     );
 }

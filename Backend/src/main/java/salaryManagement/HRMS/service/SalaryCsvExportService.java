@@ -13,15 +13,13 @@ public class SalaryCsvExportService {
         StringBuilder csv = new StringBuilder();
 
         csv.append(
-                "salaryId,employeeId,employeeNumber,firstName,lastName,"
+                "employeeNumber,firstName,lastName,"
                         + "country,department,annualAmount,currencyCode,"
                         + "effectiveFrom,effectiveTo\n"
         );
 
         for (SalaryExportProjection row : rows) {
             appendRow(csv,
-                    row.getSalaryId(),
-                    row.getEmployeeId(),
                     row.getEmployeeNumber(),
                     row.getFirstName(),
                     row.getLastName(),

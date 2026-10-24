@@ -11,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import salaryManagement.HRMS.dto.EmployeeResponseDto;
 import salaryManagement.HRMS.model.Employee;
 import salaryManagement.HRMS.service.EmployeeService;
 
@@ -48,12 +49,13 @@ public class EmployeeController {
         );
     }
 
-    // GET /api/employees?page=0&size=20&sort=lastName,asc
+    // GET /api/employees?page=0&size=20&sort=last_name,asc
     @GetMapping
-    public ResponseEntity<Page<Employee>> getAllEmployees(
+    public ResponseEntity<Page<EmployeeResponseDto>> getAllEmployees(
             @PageableDefault(
                     size = 20,
-                    sort = "lastName",
+                    page = 0,
+                    sort = "last_name",
                     direction = Sort.Direction.ASC
             ) Pageable pageable) {
 
