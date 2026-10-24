@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchWithAuth } from '../api';
+import { fetchWithAuth } from '../../api';
+import './style.scss';
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 const SEARCH_DEBOUNCE_MS = 350;
@@ -45,6 +46,98 @@ function SalariesPage() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [salaryToEdit, setSalaryToEdit] = useState(null);
+  const [editValues, setEditValues] = useState(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  function startEditing(salary) {
+    setSalaryToEdit(salary.id);
+    setEditValues({
+      amount: String(salary.amount),
+      currency: salary.currency || '',
+      effectiveFrom: salary.effectiveFrom || '',
+      effectiveTo: salary.effectiveTo || '',
+    });
+    setEditError('');
+  }
+
+  function cancelEditing() {
+    setSalaryToEdit(null);
+    setEditValues(null);
+    setEditError('');
+  }
+
+  async function saveSalary(salary) {
+    const amount = Number(editValues.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || !/^\d{1,17}(\.\d{1,2})?$/.test(editValues.amount)) {
+      setEditError('Enter an amount greater than zero with no more than two decimal places.');
+      return;
+    }
+    if (!/^[A-Za-z]{3}$/.test(editValues.currency)) {
+      setEditError('Enter a three-letter currency code.');
+      return;
+    }
+    if (!editValues.effectiveFrom) {
+      setEditError('Enter an effective from date.');
+      return;
+    }
+    if (salary.effectiveTo && !editValues.effectiveTo) {
+      setEditError('Effective to date cannot be cleared with this endpoint.');
+      return;
+    }
+    if (editValues.effectiveTo && editValues.effectiveTo < editValues.effectiveFrom) {
+      setEditError('Effective to date cannot be before effective from date.');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setEditError('');
+
+    try {
+      const token = window.localStorage.getItem('accessToken');
+      const requestBody = {
+        amount,
+        currency: editValues.currency.trim(),
+        effectiveFrom: editValues.effectiveFrom,
+      };
+      if (editValues.effectiveTo) requestBody.effectiveTo = editValues.effectiveTo;
+
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/v1/salaries/${encodeURIComponent(salary.id)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(requestBody),
+        },
+        navigate,
+      );
+
+      if (response.status === 401 || response.status === 403) return;
+
+      if (!response.ok) {
+        let message = `Unable to update salary (HTTP ${response.status}).`;
+        try {
+          const result = await response.json();
+          if (result && typeof result.message === 'string') message = result.message;
+          else if (result && typeof result.error === 'string') message = result.error;
+        } catch (responseError) {
+          if (responseError.name !== 'SyntaxError') throw responseError;
+        }
+        throw new Error(message);
+      }
+
+      cancelEditing();
+      setReload((current) => current + 1);
+    } catch (requestError) {
+      setEditError(requestError.message || 'Unable to connect to the salary API.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }
 
   useEffect(() => {
     const normalizedSearchTerm = searchTerm.trim();
@@ -146,7 +239,6 @@ function SalariesPage() {
           <strong>{page ? page.totalElements.toLocaleString() : '—'}</strong>
           {page?.totalElements === 1 ? ' current salary' : ' current salaries'}
         </span>
-        <span className="route-filter">{debouncedSearchTerm ? `Name: ${debouncedSearchTerm}` : 'Current salaries'}</span>
       </div>
 
       {error && (
@@ -167,23 +259,89 @@ function SalariesPage() {
                 <th>EFFECTIVE FROM</th>
                 <th>EFFECTIVE TO</th>
                 <th>CREATED BY</th>
+                <th><span className="visually-hidden">ACTIONS</span></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan="6" className="employee-table-message">Loading salaries…</td></tr>
+                <tr><td colSpan="7" className="employee-table-message">Loading salaries…</td></tr>
               ) : error ? (
-                <tr><td colSpan="6" className="employee-table-message">Salary records could not be loaded.</td></tr>
+                <tr><td colSpan="7" className="employee-table-message">Salary records could not be loaded.</td></tr>
               ) : page.content.length === 0 ? (
-                <tr><td colSpan="6" className="employee-table-message">No current salaries found.</td></tr>
+                <tr><td colSpan="7" className="employee-table-message">No current salaries found.</td></tr>
               ) : page.content.map((salary) => (
                 <tr key={salary.id}>
                   <td><strong>{salary.name}</strong></td>
-                  <td>{formatAmount(salary.amount, salary.currency)}</td>
-                  <td>{salary.currency || '—'}</td>
-                  <td>{formatDate(salary.effectiveFrom)}</td>
-                  <td>{formatDate(salary.effectiveTo)}</td>
+                  <td>
+                    {salaryToEdit === salary.id ? (
+                      <input
+                        aria-label={`Annual salary for ${salary.name}`}
+                        className="salary-edit-input salary-amount-input"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={editValues.amount}
+                        onChange={(event) => setEditValues((current) => ({ ...current, amount: event.target.value }))}
+                      />
+                    ) : formatAmount(salary.amount, salary.currency)}
+                  </td>
+                  <td>
+                    {salaryToEdit === salary.id ? (
+                      <input
+                        aria-label={`Currency for ${salary.name}`}
+                        className="salary-edit-input salary-currency-input"
+                        type="text"
+                        maxLength="3"
+                        value={editValues.currency}
+                        onChange={(event) => setEditValues((current) => ({ ...current, currency: event.target.value }))}
+                      />
+                    ) : salary.currency || '—'}
+                  </td>
+                  <td>
+                    {salaryToEdit === salary.id ? (
+                      <input
+                        aria-label={`Effective from for ${salary.name}`}
+                        className="salary-edit-input salary-date-input"
+                        type="date"
+                        value={editValues.effectiveFrom}
+                        onChange={(event) => setEditValues((current) => ({ ...current, effectiveFrom: event.target.value }))}
+                      />
+                    ) : formatDate(salary.effectiveFrom)}
+                  </td>
+                  <td>
+                    {salaryToEdit === salary.id ? (
+                      <input
+                        aria-label={`Effective to for ${salary.name}`}
+                        className="salary-edit-input salary-date-input"
+                        type="date"
+                        value={editValues.effectiveTo}
+                        onChange={(event) => setEditValues((current) => ({ ...current, effectiveTo: event.target.value }))}
+                      />
+                    ) : formatDate(salary.effectiveTo)}
+                  </td>
                   <td>{salary.createdBy || '—'}</td>
+                  <td>
+                    {salaryToEdit === salary.id ? (
+                      <div className="salary-edit-actions">
+                        <button type="button" onClick={() => saveSalary(salary)} disabled={isSavingEdit}>
+                          {isSavingEdit ? 'Saving…' : 'Save'}
+                        </button>
+                        <button type="button" onClick={cancelEditing} disabled={isSavingEdit}>Cancel</button>
+                        {editError && <span className="salary-edit-error" role="alert">{editError}</span>}
+                      </div>
+                    ) : (
+                      <button
+                        className="employee-edit-button"
+                        type="button"
+                        aria-label={`Edit salary for ${salary.name}`}
+                        title="Edit salary"
+                        onClick={() => startEditing(salary)}
+                        disabled={isSavingEdit}
+                      >
+                        <span aria-hidden="true">✎</span>
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

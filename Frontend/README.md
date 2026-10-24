@@ -8,7 +8,13 @@ The overview loads employees from `GET /api/v1/employees` using the backend's Sp
 
 The employee directory searches by name through `GET /api/v1/employees/search?keyword=...`. Search requests are debounced by 350 ms and return to the first page.
 
+The Analytics page loads workforce overview, salary-by-country, salary-by-department, salary distribution, and highest-paid employee data from `/api/v1/analytics/overview`, `/api/v1/analytics/salaries/by-country`, `/api/v1/analytics/salaries/by-department`, `/api/v1/analytics/salaries/distribution`, and `/api/v1/analytics/highest-paid`. Salary distribution requires a currency code; country, department, and as-of date filters are optional. The highest-paid employee grid has its own optional country filter, sent as the `countryCode` query parameter. Filter options are populated from the salary-by-country and salary-by-department responses. The Questions grid submits a question and `as_of_date` to `POST /api/v1/questions` and displays the answer.
+
 Use **Add employee** on the employee directory to submit employee details with `POST /api/v1/employees`. The request uses the signed-in bearer token.
+
+Select an employee to edit their details with `PUT /api/v1/employees/{id}`. The edit form also provides **Delete employee**, which asks for confirmation before sending `DELETE /api/v1/employees/{id}`.
+
+Use the edit button on a salary row to update its amount, currency, or effective dates with `PATCH /api/v1/salaries/{id}`.
 
 Use `#/signup` to create an account and `#/login` to sign in. Successful sign-in stores the backend's `accessToken` in `localStorage` and navigates to `#/dashboard`. Protected API requests use it as a bearer token; a `401` or `403` response clears the token and redirects to sign-in.
 

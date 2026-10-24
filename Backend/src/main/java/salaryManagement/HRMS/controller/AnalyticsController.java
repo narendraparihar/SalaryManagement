@@ -46,7 +46,6 @@ public class AnalyticsController {
 
         return analyticsService.getOverview(asOf);
     }
-
     // GET /analytics/salaries/by-country
     @GetMapping("/salaries/by-country")
     @PreAuthorize("hasAnyRole('HR_ADMIN', 'HR_ANALYST')")

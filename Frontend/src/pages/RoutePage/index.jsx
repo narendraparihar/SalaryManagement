@@ -1,3 +1,5 @@
+import './style.scss';
+
 function RoutePage({ section }) {
   const recordLabel = section.title === 'Salary' ? 'record' : section.title.slice(0, -1).toLowerCase();
 
