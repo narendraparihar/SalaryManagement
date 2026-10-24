@@ -1,4 +1,4 @@
-import { HashRouter, useLocation } from 'react-router-dom';
+import { HashRouter, useLocation, useNavigate } from 'react-router-dom';
 import './style.scss';
 import AuthPage from '../pages/AuthPage';
 import AnalyticsPage from '../pages/AnalyticsPage';
@@ -15,6 +15,9 @@ const navigation = [
 
 function AppContent() {
   const route = useLocation().pathname;
+  const navigate = useNavigate();
+  const userEmail = window.localStorage.getItem('userEmail') || '';
+  const avatarInitial = userEmail.trim().charAt(0).toUpperCase() || 'U';
 
   const isDashboard = route === '/' || route === '/dashboard';
   const pageTitle = isDashboard
@@ -27,6 +30,12 @@ function AppContent() {
 
   if (!window.localStorage.getItem('accessToken')) {
     return <AuthPage mode="login" />;
+  }
+
+  function logout() {
+    window.localStorage.removeItem('accessToken');
+    window.localStorage.removeItem('userEmail');
+    navigate('/login', { replace: true });
   }
 
   return (
@@ -50,22 +59,16 @@ function AppContent() {
             </a>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <span className="avatar avatar-small">AM</span>
-          <span><strong>Alex Morgan</strong><small>Administrator</small></span>
-          <span className="more-mark" aria-hidden="true">...</span>
-        </div>
       </aside>
 
       <div className="workspace">
         <header className="topbar">
           <div className="breadcrumbs"><span>Workspace</span><span className="breadcrumb-slash">/</span><strong>{pageTitle}</strong></div>
           <div className="topbar-actions">
-            <span className="period-label">OCT 2026</span>
-            <button className="icon-button notification-button" type="button" aria-label="Notifications">
-              <span aria-hidden="true">N</span><i />
-            </button>
-            <span className="avatar">AM</span>
+            <span className="icon-button account-avatar" aria-label={userEmail ? `Account: ${userEmail}` : 'Account'}>
+              {avatarInitial}
+            </span>
+            <button className="logout-button" type="button" onClick={logout}>Log out</button>
           </div>
         </header>
 

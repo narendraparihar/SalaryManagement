@@ -4,6 +4,7 @@ import App from './App';
 beforeEach(() => {
   window.location.hash = '#/';
   window.localStorage.setItem('accessToken', 'test-token');
+  window.localStorage.setItem('userEmail', 'alex@example.com');
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     json: async () => ({
@@ -31,6 +32,17 @@ test('requires sign in before loading the workspace', () => {
 
   expect(screen.getByRole('heading', { name: /sign in to northstar/i })).toBeInTheDocument();
   expect(global.fetch).not.toHaveBeenCalled();
+});
+
+test('shows the email initial in the header and logs out', async () => {
+  render(<App />);
+
+  expect(screen.getByLabelText('Account: alex@example.com')).toHaveTextContent('A');
+  fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+  expect(await screen.findByRole('heading', { name: /sign in to northstar/i })).toBeInTheDocument();
+  expect(window.localStorage.getItem('accessToken')).toBeNull();
+  expect(window.localStorage.getItem('userEmail')).toBeNull();
 });
 
 test('navigates to the employee route', async () => {

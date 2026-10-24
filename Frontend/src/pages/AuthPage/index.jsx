@@ -46,6 +46,10 @@ function AuthPage({ mode }) {
       }
 
       window.localStorage.setItem('accessToken', result.accessToken);
+      window.localStorage.setItem(
+        'userEmail',
+        typeof result.email === 'string' && result.email.trim() ? result.email.trim() : email.trim(),
+      );
       navigate('/dashboard', { replace: true });
     } catch (requestError) {
       setError(requestError.message || 'Unable to connect to the authentication service.');

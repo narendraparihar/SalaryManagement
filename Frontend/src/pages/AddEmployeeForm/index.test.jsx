@@ -9,6 +9,55 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.clearAllMocks();
+  jest.restoreAllMocks();
+});
+
+test('deletes an employee after confirmation and reports success', async () => {
+  const onSuccess = jest.fn();
+  const employee = {
+    id: '31db4e5a-ef45-4d9d-b089-c683d77ce856',
+    firstName: 'Taylor',
+    lastName: 'Lee',
+    email: 'taylor@example.com',
+  };
+  global.fetch.mockResolvedValue({ ok: true, status: 204 });
+  jest.spyOn(window, 'confirm').mockReturnValue(true);
+
+  render(
+    <MemoryRouter>
+      <AddEmployeeForm employee={employee} onCancel={jest.fn()} onSuccess={onSuccess} />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete employee' }));
+
+  await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  expect(window.confirm).toHaveBeenCalledWith(
+    'Delete Taylor Lee? This action cannot be undone.',
+  );
+  expect(global.fetch).toHaveBeenCalledWith(
+    `http://localhost:8080/api/v1/employees/${employee.id}`,
+    expect.objectContaining({ method: 'DELETE' }),
+  );
+});
+
+test('does not delete an employee when deletion is canceled', () => {
+  global.fetch.mockResolvedValue({ ok: true, status: 204 });
+  jest.spyOn(window, 'confirm').mockReturnValue(false);
+
+  render(
+    <MemoryRouter>
+      <AddEmployeeForm
+        employee={{ id: 'employee-123', firstName: 'Taylor', lastName: 'Lee' }}
+        onCancel={jest.fn()}
+        onSuccess={jest.fn()}
+      />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete employee' }));
+
+  expect(global.fetch).not.toHaveBeenCalled();
 });
 
 test('posts employee details to the employee endpoint and reports success', async () => {
@@ -41,6 +90,53 @@ test('posts employee details to the employee endpoint and reports success', asyn
         lastName: 'Lee',
         email: 'taylor@example.com',
         departmentId: 12,
+      }),
+    }),
+  );
+});
+
+test('puts updated employee details to the employee-specific endpoint', async () => {
+  const onSuccess = jest.fn();
+  global.fetch.mockResolvedValue({ ok: true, status: 200 });
+  const employee = {
+    id: '31db4e5a-ef45-4d9d-b089-c683d77ce856',
+    firstName: 'Taylor',
+    lastName: 'Lee',
+    employeeNumber: 'EMP-12',
+    email: 'taylor@example.com',
+    departmentId: 12,
+    designationId: 4,
+    countryCode: 'USA',
+    hireDate: '2024-01-15',
+    employmentStatus: 'ACTIVE',
+  };
+
+  render(
+    <MemoryRouter>
+      <AddEmployeeForm employee={employee} onCancel={jest.fn()} onSuccess={onSuccess} />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByLabelText('First name')).toHaveValue('Taylor');
+  expect(screen.getByLabelText('Department ID')).toHaveValue(12);
+  fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Tay' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+  await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  expect(global.fetch).toHaveBeenCalledWith(
+    `http://localhost:8080/api/v1/employees/${employee.id}`,
+    expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({
+        firstName: 'Tay',
+        lastName: 'Lee',
+        email: 'taylor@example.com',
+        employeeNumber: 'EMP-12',
+        countryCode: 'USA',
+        hireDate: '2024-01-15',
+        employmentStatus: 'ACTIVE',
+        departmentId: 12,
+        designationId: 4,
       }),
     }),
   );

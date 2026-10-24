@@ -31,6 +31,7 @@ function EmployeesPage() {
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
+  const [employeeToEdit, setEmployeeToEdit] = useState(null);
 
   useEffect(() => {
     const normalizedSearchTerm = searchTerm.trim();
@@ -55,7 +56,7 @@ function EmployeesPage() {
         const query = new URLSearchParams({
           page: String(pageIndex),
           size: String(pageSize),
-          sort: 'lastName,asc',
+          sort: 'last_name,asc',
         });
         const endpoint = debouncedSearchTerm
           ? `/api/v1/employees/search?${new URLSearchParams({
@@ -127,17 +128,26 @@ function EmployeesPage() {
               onChange={(event) => setSearchTerm(event.target.value)}
             />
           </label>
-          <button className="primary-button" type="button" onClick={() => setIsAddingEmployee(true)}>
+          <button className="primary-button" type="button" onClick={() => {
+            setEmployeeToEdit(null);
+            setIsAddingEmployee(true);
+          }}>
             <span aria-hidden="true">+</span> Add employee
           </button>
         </div>
       </div>
 
-      {isAddingEmployee && (
+      {(isAddingEmployee || employeeToEdit) && (
         <AddEmployeeForm
-          onCancel={() => setIsAddingEmployee(false)}
+          key={employeeToEdit?.id || 'new'}
+          employee={employeeToEdit}
+          onCancel={() => {
+            setIsAddingEmployee(false);
+            setEmployeeToEdit(null);
+          }}
           onSuccess={() => {
             setIsAddingEmployee(false);
+            setEmployeeToEdit(null);
             setPageIndex(0);
             setReload((current) => current + 1);
           }}
@@ -171,25 +181,40 @@ function EmployeesPage() {
                 <th>COUNTRY</th>
                 <th>HIRE DATE</th>
                 <th>STATUS</th>
+                <th><span className="visually-hidden">ACTIONS</span></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan="8" className="employee-table-message">Loading employees…</td></tr>
+                <tr><td colSpan="9" className="employee-table-message">Loading employees…</td></tr>
               ) : error ? (
-                <tr><td colSpan="8" className="employee-table-message">Employee records could not be loaded.</td></tr>
+                <tr><td colSpan="9" className="employee-table-message">Employee records could not be loaded.</td></tr>
               ) : page.content.length === 0 ? (
-                <tr><td colSpan="8" className="employee-table-message">No employees found.</td></tr>
+                <tr><td colSpan="9" className="employee-table-message">No employees found.</td></tr>
               ) : page.content.map((employee) => (
                 <tr key={employee.id}>
                   <td><strong>{employee.firstName} {employee.lastName}</strong></td>
                   <td>{employee.employeeNumber || '—'}</td>
                   <td>{employee.email || '—'}</td>
-                  <td>{employee.departmentId ? `Department ${employee.departmentId}` : '—'}</td>
-                  <td>{employee.designationId ? `Designation ${employee.designationId}` : '—'}</td>
+                  <td>{employee.departmentId ? `${employee.departmentName}` : '—'}</td>
+                  <td>{employee.designationId ? `${employee.designationName}` : '—'}</td>
                   <td>{employee.countryCode || '—'}</td>
                   <td>{formatDate(employee.hireDate)}</td>
-                  <td><span className="status-pill">{employee.employmentStatus || 'Unknown'}</span></td>
+                  <td><span className="status-pill">{employee.status || 'Unknown'}</span></td>
+                  <td>
+                    <button
+                      className="employee-edit-button"
+                      type="button"
+                      aria-label={`Edit employee ${employee.firstName} ${employee.lastName}`}
+                      title="Edit employee"
+                      onClick={() => {
+                        setIsAddingEmployee(false);
+                        setEmployeeToEdit(employee);
+                      }}
+                    >
+                      <span aria-hidden="true">✎</span>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
