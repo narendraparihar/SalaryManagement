@@ -1,3 +1,97 @@
 .salaries-table {
-  min-width: 760px;
+  min-width: 980px;
+}
+
+.salary-edit-input {
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+}
+
+.salary-amount-input {
+  width: 112px;
+}
+
+.salary-currency-input {
+  width: 58px;
+  text-transform: uppercase;
+}
+
+.salary-date-input {
+  width: 138px;
+}
+
+.salary-edit-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.salary-edit-actions button {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.salary-edit-actions button:first-child {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+}
+
+.salary-edit-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.salary-edit-error {
+  position: absolute;
+  z-index: 1;
+  width: 220px;
+  margin-top: 6px;
+  padding: 7px;
+  border: 1px solid #f0d6ce;
+  border-radius: 4px;
+  background: #fff8f5;
+  color: #9d503b;
+  font-size: 10px;
+}
+
+.salaries-table .employee-edit-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #dce4de;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--green);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.salaries-table .employee-edit-button:hover,
+.salaries-table .employee-edit-button:focus-visible {
+  border-color: var(--green);
+  background: #f3f8f5;
+}
+
+.salaries-table .employee-edit-button:focus-visible {
+  outline: 2px solid rgb(24 120 95 / 18%);
+  outline-offset: 2px;
+}
+
+.salaries-table .employee-edit-button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
 }
