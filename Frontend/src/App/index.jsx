@@ -1,10 +1,10 @@
-import { HashRouter, useLocation } from 'react-router-dom';
-import './App.css';
-import AuthPage from './pages/AuthPage';
-import EmployeesPage from './pages/EmployeesPage';
-import Home from './pages/Home';
-import RoutePage from './pages/RoutePage';
-import SalariesPage from './pages/SalariesPage';
+import { HashRouter, useLocation, useNavigate } from 'react-router-dom';
+import './style.scss';
+import AuthPage from '../pages/AuthPage';
+import AnalyticsPage from '../pages/AnalyticsPage';
+import EmployeesPage from '../pages/EmployeesPage';
+import Home from '../pages/Home';
+import SalariesPage from '../pages/SalariesPage';
 
 const navigation = [
   { path: '/', label: 'Overview', marker: 'OV' },
@@ -13,27 +13,16 @@ const navigation = [
   { path: '/analytics', label: 'Analytics', marker: 'AN' },
 ];
 
-const sections = {
-  '/analytics': {
-    title: 'Analytics',
-    description: 'A clear view of the numbers behind your team.',
-    columns: ['Metric', 'This month', 'Last month', 'Change'],
-    rows: [
-      ['Headcount', '128', '124', '+3.2%'],
-      ['Monthly payroll', '$842,600', '$819,400', '+2.8%'],
-      ['Open positions', '7', '9', '-22.2%'],
-    ],
-  },
-};
-
 function AppContent() {
   const route = useLocation().pathname;
+  const navigate = useNavigate();
+  const userEmail = window.localStorage.getItem('userEmail') || '';
+  const avatarInitial = userEmail.trim().charAt(0).toUpperCase() || 'U';
 
-  const activeSection = sections[route];
   const isDashboard = route === '/' || route === '/dashboard';
   const pageTitle = isDashboard
     ? 'Overview'
-    : navigation.find((item) => item.path === route)?.label || activeSection?.title || 'Page not found';
+    : navigation.find((item) => item.path === route)?.label || 'Page not found';
 
   if (route === '/login' || route === '/signup') {
     return <AuthPage mode={route.slice(1)} />;
@@ -41,6 +30,12 @@ function AppContent() {
 
   if (!window.localStorage.getItem('accessToken')) {
     return <AuthPage mode="login" />;
+  }
+
+  function logout() {
+    window.localStorage.removeItem('accessToken');
+    window.localStorage.removeItem('userEmail');
+    navigate('/login', { replace: true });
   }
 
   return (
@@ -64,27 +59,21 @@ function AppContent() {
             </a>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <span className="avatar avatar-small">AM</span>
-          <span><strong>Alex Morgan</strong><small>Administrator</small></span>
-          <span className="more-mark" aria-hidden="true">...</span>
-        </div>
       </aside>
 
       <div className="workspace">
         <header className="topbar">
           <div className="breadcrumbs"><span>Workspace</span><span className="breadcrumb-slash">/</span><strong>{pageTitle}</strong></div>
           <div className="topbar-actions">
-            <span className="period-label">OCT 2026</span>
-            <button className="icon-button notification-button" type="button" aria-label="Notifications">
-              <span aria-hidden="true">N</span><i />
-            </button>
-            <span className="avatar">AM</span>
+            <span className="icon-button account-avatar" aria-label={userEmail ? `Account: ${userEmail}` : 'Account'}>
+              {avatarInitial}
+            </span>
+            <button className="logout-button" type="button" onClick={logout}>Log out</button>
           </div>
         </header>
 
         <main className="main-content">
-          {isDashboard ? <Home /> : route === '/employees' ? <EmployeesPage /> : route === '/salaries' ? <SalariesPage /> : activeSection ? <RoutePage section={activeSection} /> : (
+          {isDashboard ? <Home /> : route === '/employees' ? <EmployeesPage /> : route === '/salaries' ? <SalariesPage /> : route === '/analytics' ? <AnalyticsPage /> : (
             <section className="not-found">
               <p className="eyebrow">404 / NOT FOUND</p>
               <h1>This page isn't here.</h1>

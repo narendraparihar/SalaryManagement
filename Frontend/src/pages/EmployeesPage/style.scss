@@ -1,0 +1,45 @@
+.employee-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.employees-table {
+  min-width: 900px;
+}
+
+.employee-edit-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #dce4de;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--green);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.employee-edit-button:hover,
+.employee-edit-button:focus-visible {
+  border-color: var(--green);
+  background: #f3f8f5;
+}
+
+.employee-edit-button:focus-visible {
+  outline: 2px solid rgb(24 120 95 / 18%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .employee-page-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .employee-page-actions .primary-button {
+    align-self: flex-start;
+  }
+}

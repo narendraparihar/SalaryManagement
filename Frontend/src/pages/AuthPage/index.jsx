@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './style.scss';
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 
 function AuthPage({ mode }) {
@@ -45,6 +46,10 @@ function AuthPage({ mode }) {
       }
 
       window.localStorage.setItem('accessToken', result.accessToken);
+      window.localStorage.setItem(
+        'userEmail',
+        typeof result.email === 'string' && result.email.trim() ? result.email.trim() : email.trim(),
+      );
       navigate('/dashboard', { replace: true });
     } catch (requestError) {
       setError(requestError.message || 'Unable to connect to the authentication service.');
