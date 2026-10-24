@@ -6,8 +6,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public interface SalaryExportProjection {
-    UUID getSalaryId();
-    UUID getEmployeeId();
     String getEmployeeNumber();
     String getFirstName();
     String getLastName();

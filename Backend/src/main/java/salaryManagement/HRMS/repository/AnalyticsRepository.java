@@ -128,7 +128,7 @@ public interface AnalyticsRepository
     );
 
     @Query(value = """
-        SELECT e.id AS "employeeId",
+        SELECT 
                e.employee_number AS "employeeNumber",
                e.first_name AS "firstName",
                e.last_name AS "lastName",
@@ -158,8 +158,7 @@ public interface AnalyticsRepository
     );
 
     @Query(value = """
-        SELECT s.id AS "salaryId",
-               e.id AS "employeeId",
+        SELECT 
                e.employee_number AS "employeeNumber",
                e.first_name AS "firstName",
                e.last_name AS "lastName",

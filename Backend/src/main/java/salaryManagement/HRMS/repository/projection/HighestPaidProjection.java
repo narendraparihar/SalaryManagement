@@ -5,7 +5,6 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface HighestPaidProjection {
-    UUID getEmployeeId();
     String getEmployeeNumber();
     String getFirstName();
     String getLastName();

@@ -5,6 +5,8 @@ import salaryManagement.HRMS.dto.QuestionAnswerResponse;
 import salaryManagement.HRMS.dto.QuestionAnswerResponse.QuestionFilters;
 import salaryManagement.HRMS.dto.QuestionMetric;
 import salaryManagement.HRMS.dto.QuestionRequest;
+import salaryManagement.HRMS.model.Country;
+import salaryManagement.HRMS.repository.CountryRepository;
 import salaryManagement.HRMS.repository.QuestionRepository;
 import salaryManagement.HRMS.repository.projection.QuestionAggregateProjection;
 
@@ -14,84 +16,88 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Locale;
-
+import java.util.Comparator;
+import java.util.Comparator;
+import java.util.Locale;
+import java.util.regex.Pattern;
+import java.util.regex.Pattern;
 @Service
 @Transactional(readOnly = true)
 public class QuestionAnswerService {
 
     private final QuestionRepository questionRepository;
-
+    private final CountryRepository countryRepository;
     public QuestionAnswerService(
-            QuestionRepository questionRepository) {
+            QuestionRepository questionRepository,
+            CountryRepository countryRepository) {
         this.questionRepository = questionRepository;
+        this.countryRepository = countryRepository;
     }
 
-    public QuestionAnswerResponse answer(QuestionRequest request) {
+        public QuestionAnswerResponse answer(QuestionRequest request) {
 
-        String question = request.question().trim();
-        String normalized = question.toLowerCase(Locale.ROOT);
+            String question = request.question().trim();
+            String normalized = question.toLowerCase(Locale.ROOT);
 
-        LocalDate asOfDate = request.asOfDate() != null
-                ? request.asOfDate()
-                : LocalDate.now();
+            LocalDate asOfDate = request.asOfDate() != null
+                    ? request.asOfDate()
+                    : LocalDate.now();
 
-        // Supported country for the first version.
-        boolean indiaQuestion =
-                normalized.matches("(?s).*\\bindia\\b.*")
-                        || normalized.matches("(?s).*\\bindian\\b.*");
+            // Supported country for the first version.
+            Country country = detectCountry(normalized);
 
-        if (!indiaQuestion) {
-            return unsupported(
-                    question,
-                    "Currently, compensation questions about India are supported."
-            );
-        }
-
-        QuestionMetric metric = detectMetric(normalized);
-
-        if (metric == null) {
-            return unsupported(
-                    question,
-                    "Supported metrics are average, total, minimum, "
-                            + "maximum annual salary, and employee count."
-            );
-        }
-
-        QuestionAggregateProjection aggregate =
-                questionRepository.getSalaryAggregate(
-                        "IN",
-                        "INR",
-                        asOfDate
+            if (country == null) {
+                return unsupported(
+                        question,
+                        "Please specify a supported country, for example India or Australia."
                 );
+            }
 
-        BigDecimal value = switch (metric) {
-            case AVERAGE -> aggregate.getAverageSalary();
-            case TOTAL -> aggregate.getTotalSalary();
-            case MINIMUM -> aggregate.getMinimumSalary();
-            case MAXIMUM -> aggregate.getMaximumSalary();
-            case EMPLOYEE_COUNT ->
-                    aggregate.getEmployeeCount() == null
-                            ? BigDecimal.ZERO
-                            : BigDecimal.valueOf(
-                            aggregate.getEmployeeCount()
+            QuestionMetric metric = detectMetric(normalized);
+
+            if (metric == null) {
+                return unsupported(
+                        question,
+                        "Supported metrics are average, total, minimum, "
+                                + "maximum annual salary, and employee count."
+                );
+            }
+
+            QuestionAggregateProjection aggregate =
+                    questionRepository.getSalaryAggregate(
+                            country.getCode(),
+                            country.getDefaultCurrency(),
+                            asOfDate
                     );
-        };
 
-        long employeeCount = aggregate.getEmployeeCount() == null
-                ? 0L
-                : aggregate.getEmployeeCount();
+            BigDecimal value = switch (metric) {
+                case AVERAGE -> aggregate.getAverageSalary();
+                case TOTAL -> aggregate.getTotalSalary();
+                case MINIMUM -> aggregate.getMinimumSalary();
+                case MAXIMUM -> aggregate.getMaximumSalary();
+                case EMPLOYEE_COUNT ->
+                        aggregate.getEmployeeCount() == null
+                                ? BigDecimal.ZERO
+                                : BigDecimal.valueOf(
+                                aggregate.getEmployeeCount()
+                        );
+            };
 
-        return new QuestionAnswerResponse(
-                question,
-                "answered",
-                toMetricName(metric),
-                new QuestionFilters("IN", asOfDate.toString()),
-                "INR",
-                value,
-                employeeCount,
-                explanation(metric)
-        );
-    }
+            long employeeCount = aggregate.getEmployeeCount() == null
+                    ? 0L
+                    : aggregate.getEmployeeCount();
+
+            return new QuestionAnswerResponse(
+                    question,
+                    "answered",
+                    toMetricName(metric),
+                    new QuestionFilters(country.getCode(), asOfDate.toString()),
+                    country.getDefaultCurrency(),
+                    value,
+                    employeeCount,
+                    explanation(metric)
+            );
+        }
 
     private QuestionMetric detectMetric(String question) {
 
@@ -124,6 +130,23 @@ public class QuestionAnswerService {
         return null;
     }
 
+    private Country detectCountry(String normalizedQuestion) {
+        return countryRepository.findAllCountries()
+                .stream()
+                .filter(country -> country.getName() != null)
+                .filter(country -> {
+                    String name = country.getName()
+                            .toLowerCase(Locale.ROOT);
+
+                    return Pattern.compile(
+                            "\\b" + Pattern.quote(name) + "\\b"
+                    ).matcher(normalizedQuestion).find();
+                })
+                .max(Comparator.comparingInt(
+                        country -> country.getName().length()
+                ))
+                .orElse(null);
+    }
     private String toMetricName(QuestionMetric metric) {
         return switch (metric) {
             case AVERAGE -> "average_annual_base_salary";
