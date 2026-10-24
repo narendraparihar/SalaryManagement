@@ -42,9 +42,35 @@
   display: flex;
   grid-column: 1 / -1;
   justify-content: flex-end;
+  gap: 10px;
 }
 
-.employee-form .primary-button:disabled {
+.employee-delete-button {
+  margin-right: auto;
+  padding: 0 12px;
+  border: 1px solid #d8a49a;
+  border-radius: 4px;
+  background: #fff;
+  color: #9d3f32;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.employee-delete-button:hover,
+.employee-delete-button:focus-visible {
+  border-color: #9d3f32;
+  background: #fff5f3;
+}
+
+.employee-delete-button:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
+.employee-form .primary-button:disabled,
+.form-cancel:disabled {
   cursor: wait;
   opacity: .7;
 }

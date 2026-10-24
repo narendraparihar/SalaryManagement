@@ -56,7 +56,7 @@ function Home() {
         const query = new URLSearchParams({
           page: '0',
           size: String(RECENT_EMPLOYEE_LIMIT),
-          sort: 'createdAt,desc',
+          sort: 'created_at,desc',
         });
         const token = window.localStorage.getItem('accessToken');
         const response = await fetchWithAuth(`${API_BASE_URL}/api/v1/employees?${query}`, {
@@ -168,7 +168,7 @@ function Home() {
       <section className="page-intro">
         <div>
           <p className="eyebrow">{today}</p>
-          <h1>Good morning, Alex<span className="heading-period">.</span></h1>
+          <h1>Good morning<span className="heading-period">.</span></h1>
           <p className="intro-copy">Here's what's happening across your team today.</p>
         </div>
         <a className="primary-button" href="#/employees"><span aria-hidden="true">+</span> Add employee</a>
@@ -179,11 +179,6 @@ function Home() {
           <div className="metric-topline"><span>Total employees</span><span className="metric-icon">PE</span></div>
           <strong className="metric-value">{page ? page.totalElements.toLocaleString() : '—'}</strong>
           <p className="metric-foot">From the employee directory</p>
-        </article>
-        <article className="metric-card">
-          <div className="metric-topline"><span>Open positions</span><span className="metric-icon role-icon">OP</span></div>
-          <strong className="metric-value">7</strong>
-          <p className="metric-foot"><span className="neutral-change">2 closing soon</span></p>
         </article>
       </section>
 
@@ -240,18 +235,6 @@ function Home() {
           )}
         </article>
 
-        <article className="panel approvals-panel">
-          <div className="panel-heading">
-            <div><p className="eyebrow">NEEDS YOUR EYES</p><h2>Pending approvals</h2></div>
-            <span className="count-badge">4</span>
-          </div>
-          <div className="approval-list">
-            <div className="approval-row"><span className="avatar avatar-coral">JL</span><div className="approval-person"><strong>Jordan Lee</strong><span>Salary adjustment</span></div><span className="approval-amount">+$450</span></div>
-            <div className="approval-row"><span className="avatar avatar-green">SR</span><div className="approval-person"><strong>Sam Rivera</strong><span>Expense claim</span></div><span className="approval-amount">$286</span></div>
-            <div className="approval-row"><span className="avatar avatar-blue">AK</span><div className="approval-person"><strong>Amir Khan</strong><span>Time off - 3 days</span></div><span className="approval-status">Review</span></div>
-          </div>
-          <a className="panel-footer-link" href="#/salaries">View all approvals <span aria-hidden="true">-&gt;</span></a>
-        </article>
       </section>
 
       <section className="panel activity-panel">

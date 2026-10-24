@@ -224,14 +224,21 @@ a {
   cursor: pointer;
 }
 
-.icon-button i {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--coral);
+.account-avatar {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.logout-button {
+  font-family: sans-serif;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #e02929;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .main-content {

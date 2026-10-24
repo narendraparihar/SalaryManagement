@@ -17,10 +17,16 @@ const initialValues = {
   employmentStatus: '',
 };
 
-function AddEmployeeForm({ onCancel, onSuccess }) {
+function AddEmployeeForm({ employee, onCancel, onSuccess }) {
   const navigate = useNavigate();
-  const [values, setValues] = useState(initialValues);
+  const [values, setValues] = useState(() => ({
+    ...initialValues,
+    ...(employee || {}),
+    departmentId: employee?.departmentId == null ? '' : String(employee.departmentId),
+    designationId: employee?.designationId == null ? '' : String(employee.designationId),
+  }));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
 
   function updateValue(event) {
@@ -33,33 +39,37 @@ function AddEmployeeForm({ onCancel, onSuccess }) {
     setIsSubmitting(true);
     setError('');
 
-    const employee = {
+    const employeeDetails = {
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
       email: values.email.trim(),
     };
     ['employeeNumber', 'countryCode', 'hireDate', 'employmentStatus'].forEach((field) => {
-      if (values[field].trim()) employee[field] = values[field].trim();
+      if (values[field].trim()) employeeDetails[field] = values[field].trim();
     });
     ['departmentId', 'designationId'].forEach((field) => {
-      if (values[field]) employee[field] = Number(values[field]);
+      if (values[field]) employeeDetails[field] = Number(values[field]);
     });
 
     try {
       const token = window.localStorage.getItem('accessToken');
-      const response = await fetchWithAuth(`${API_BASE_URL}/api/v1/employees`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/v1/employees${employee ? `/${encodeURIComponent(employee.id)}` : ''}`,
+        {
+          method: employee ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(employeeDetails),
         },
-        body: JSON.stringify(employee),
-      }, navigate);
+        navigate,
+      );
 
       if (response.status === 401 || response.status === 403) return;
 
       if (!response.ok) {
-        let message = `Unable to add employee (HTTP ${response.status}).`;
+        let message = `Unable to ${employee ? 'update' : 'add'} employee (HTTP ${response.status}).`;
         try {
           const result = await response.json();
           if (result && typeof result.message === 'string') message = result.message;
@@ -78,14 +88,53 @@ function AddEmployeeForm({ onCancel, onSuccess }) {
     }
   }
 
+  async function handleDelete() {
+    if (!window.confirm(`Delete ${employee.firstName} ${employee.lastName}? This action cannot be undone.`)) return;
+
+    setIsDeleting(true);
+    setError('');
+
+    try {
+      const token = window.localStorage.getItem('accessToken');
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/v1/employees/${encodeURIComponent(employee.id)}`,
+        {
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+        navigate,
+      );
+
+      if (response.status === 401 || response.status === 403) return;
+
+      if (!response.ok) {
+        let message = `Unable to delete employee (HTTP ${response.status}).`;
+        try {
+          const result = await response.json();
+          if (result && typeof result.message === 'string') message = result.message;
+          else if (result && typeof result.error === 'string') message = result.error;
+        } catch (responseError) {
+          if (responseError.name !== 'SyntaxError') throw responseError;
+        }
+        throw new Error(message);
+      }
+
+      onSuccess();
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to connect to the employee API.');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <section className="panel add-employee-panel" aria-labelledby="add-employee-heading">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">EMPLOYEE DETAILS</p>
-          <h2 id="add-employee-heading">Add employee</h2>
+          <h2 id="add-employee-heading">{employee ? 'Edit employee' : 'Add employee'}</h2>
         </div>
-        <button className="form-cancel" type="button" onClick={onCancel} disabled={isSubmitting}>Cancel</button>
+        <button className="form-cancel" type="button" onClick={onCancel} disabled={isSubmitting || isDeleting}>Cancel</button>
       </div>
 
       {error && <p className="employee-form-error" role="alert">{error}</p>}
@@ -128,8 +177,18 @@ function AddEmployeeForm({ onCancel, onSuccess }) {
           <input name="employmentStatus" value={values.employmentStatus} onChange={updateValue} />
         </label>
         <div className="employee-form-actions">
-          <button className="primary-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save employee'}
+          {employee && (
+            <button
+              className="employee-delete-button"
+              type="button"
+              onClick={handleDelete}
+              disabled={isSubmitting || isDeleting}
+            >
+              {isDeleting ? 'Deleting…' : 'Delete employee'}
+            </button>
+          )}
+          <button className="primary-button" type="submit" disabled={isSubmitting || isDeleting}>
+            {isSubmitting ? 'Saving…' : employee ? 'Save changes' : 'Save employee'}
           </button>
         </div>
       </form>

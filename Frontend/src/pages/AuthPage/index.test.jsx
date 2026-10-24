@@ -38,6 +38,7 @@ test('submits login credentials, stores the access token, and opens the overview
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
   await waitFor(() => expect(window.localStorage.getItem('accessToken')).toBe('session-token'));
+  expect(window.localStorage.getItem('userEmail')).toBe('person@example.com');
   expect(screen.getByTestId('current-path')).toHaveTextContent('/dashboard');
   expect(global.fetch).toHaveBeenCalledWith(
     'http://localhost:8080/api/auth/login',

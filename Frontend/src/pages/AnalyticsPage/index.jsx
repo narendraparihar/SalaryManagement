@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithAuth } from '../../api';
 import './style.scss';
 
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+const HIGHEST_PAID_PATH = '/api/v1/analytics/highest-paid';
+const QUESTIONS_PATH = '/api/v1/questions';
+const SALARY_EXPORT_PATH = '/api/v1/analytics/salaries/export';
 const ANALYTICS_ENDPOINTS = [
   { key: 'overview', title: 'Workforce overview', path: '/api/v1/analytics/overview', type: 'overview' },
   { key: 'country', title: 'Salary by country', path: '/api/v1/analytics/salaries/by-country', type: 'table' },
@@ -89,6 +92,18 @@ function AnalyticsPage() {
     departmentId: '',
     asOf: '',
   });
+  const [currencySelectionTouched, setCurrencySelectionTouched] = useState(false);
+  const [highestPaidCountryCode, setHighestPaidCountryCode] = useState('');
+  const [exportCountryCode, setExportCountryCode] = useState('');
+  const [exportState, setExportState] = useState({ loading: false, error: '' });
+  const [question, setQuestion] = useState('What is the max annual salary in India?');
+  const [questionAsOfDate, setQuestionAsOfDate] = useState('2026-11-01');
+  const [questionResult, setQuestionResult] = useState({ loading: false, data: undefined, error: '' });
+  const questionResponse = questionResult.data && typeof questionResult.data === 'object'
+    && !Array.isArray(questionResult.data)
+    ? questionResult.data
+    : null;
+  const questionUnsupported = String(questionResponse?.status || '').toLowerCase() === 'unsupported';
 
   const countryRecords = useMemo(
     () => getRecords(results.country?.data, 'country'),
@@ -96,6 +111,18 @@ function AnalyticsPage() {
   );
   const currencyOptions = useMemo(
     () => [...new Set(countryRecords.map((record) => record.currencyCode).filter(Boolean))].sort(),
+    [countryRecords],
+  );
+  const highestPaidCountryOptions = useMemo(
+    () => [...new Map(countryRecords
+      .filter((record) => record.countryCode)
+      .map((record) => [
+        String(record.countryCode),
+        {
+          code: String(record.countryCode),
+          name: record.countryName || String(record.countryCode),
+        },
+      ])).values()],
     [countryRecords],
   );
   const departmentOptions = useMemo(
@@ -114,7 +141,7 @@ function AnalyticsPage() {
   const loadAnalytics = useCallback(async (signal) => {
     const token = window.localStorage.getItem('accessToken');
     const requests = ANALYTICS_ENDPOINTS
-      .filter((endpoint) => endpoint.key !== 'distribution')
+      .filter((endpoint) => !['distribution', 'highestPaid'].includes(endpoint.key))
       .map(async (endpoint) => {
       setResults((current) => ({
         ...current,
@@ -156,17 +183,66 @@ function AnalyticsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const query = new URLSearchParams();
+    if (highestPaidCountryCode) query.set('countryCode', highestPaidCountryCode);
+    const path = highestPaidCountryCode
+      ? `${HIGHEST_PAID_PATH}?${query.toString()}`
+      : HIGHEST_PAID_PATH;
+
+    async function loadHighestPaid() {
+      setResults((current) => ({
+        ...current,
+        highestPaid: { loading: true, data: current.highestPaid?.data, error: '' },
+      }));
+
+      try {
+        const token = window.localStorage.getItem('accessToken');
+        const response = await fetchWithAuth(`${API_BASE_URL}${path}`, {
+          headers: token ? { Authorization: 'Bearer ' + token } : {},
+          signal: controller.signal,
+        }, navigate);
+
+        if (response.status === 401 || response.status === 403) return;
+        if (!response.ok) {
+          throw new Error(`Unable to load highest-paid employees (HTTP ${response.status}).`);
+        }
+
+        const data = await response.json();
+        setResults((current) => ({
+          ...current,
+          highestPaid: { loading: false, data, error: '' },
+        }));
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') {
+          setResults((current) => ({
+            ...current,
+            highestPaid: {
+              loading: false,
+              data: current.highestPaid?.data,
+              error: requestError.message || 'Unable to connect to highest-paid employees API.',
+            },
+          }));
+        }
+      }
+    }
+
+    loadHighestPaid();
+    return () => controller.abort();
+  }, [highestPaidCountryCode, navigate, reload]);
+
+  useEffect(() => {
+    const controller = new AbortController();
     loadAnalytics(controller.signal);
     return () => controller.abort();
   }, [loadAnalytics, reload]);
 
   useEffect(() => {
-    if (!filters.currencyCode && currencyOptions.length > 0) {
+    if (!currencySelectionTouched && !filters.currencyCode && currencyOptions.length > 0) {
       setFilters((current) => (
         current.currencyCode ? current : { ...current, currencyCode: currencyOptions[0] }
       ));
     }
-  }, [currencyOptions, filters.currencyCode]);
+  }, [currencyOptions, currencySelectionTouched, filters.currencyCode]);
 
   useEffect(() => {
     if (!filters.currencyCode) return undefined;
@@ -219,7 +295,80 @@ function AnalyticsPage() {
 
   function updateFilter(event) {
     const { name, value } = event.target;
+    if (name === 'currencyCode') setCurrencySelectionTouched(true);
     setFilters((current) => ({ ...current, [name]: value }));
+  }
+
+  async function exportSalaries() {
+    setExportState({ loading: true, error: '' });
+    const query = new URLSearchParams();
+    if (exportCountryCode) query.set('countryCode', exportCountryCode);
+    if (filters.departmentId) query.set('departmentId', filters.departmentId);
+    if (filters.currencyCode) query.set('currencyCode', filters.currencyCode);
+    const queryString = query.toString();
+    const path = queryString ? `${SALARY_EXPORT_PATH}?${queryString}` : SALARY_EXPORT_PATH;
+
+    try {
+      const token = window.localStorage.getItem('accessToken');
+      const response = await fetchWithAuth(`${API_BASE_URL}${path}`, {
+        headers: token ? { Authorization: 'Bearer ' + token } : {},
+      }, navigate);
+
+      if (response.status === 401 || response.status === 403) {
+        setExportState({ loading: false, error: '' });
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(`Unable to export salary records (HTTP ${response.status}).`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = 'salary-records.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+      setExportState({ loading: false, error: '' });
+    } catch (requestError) {
+      setExportState({
+        loading: false,
+        error: requestError.message || 'Unable to download salary records.',
+      });
+    }
+  }
+
+  async function submitQuestion(event) {
+    event.preventDefault();
+    setQuestionResult((current) => ({ ...current, loading: true, error: '' }));
+
+    try {
+      const token = window.localStorage.getItem('accessToken');
+      const response = await fetchWithAuth(`${API_BASE_URL}${QUESTIONS_PATH}`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question, as_of_date: questionAsOfDate }),
+      }, navigate);
+
+      if (response.status === 401 || response.status === 403) return;
+      if (!response.ok) {
+        throw new Error(`Unable to answer question (HTTP ${response.status}).`);
+      }
+
+      const data = await response.json();
+      setQuestionResult({ loading: false, data, error: '' });
+    } catch (requestError) {
+      setQuestionResult((current) => ({
+        ...current,
+        loading: false,
+        error: requestError.message || 'Unable to connect to questions API.',
+      }));
+    }
   }
 
   return (
@@ -253,6 +402,19 @@ function AnalyticsPage() {
             <article className={`panel analytics-panel${endpoint.type === 'overview' ? ' analytics-overview-panel' : ''}`} key={endpoint.key}>
               <div className="panel-heading">
                 <div><p className="eyebrow">PEOPLE &amp; PAY</p><h2>{endpoint.title}</h2></div>
+                {endpoint.key === 'overview' && (
+                  <div className="analytics-export-actions">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={exportSalaries}
+                      disabled={exportState.loading}
+                    >
+                      {exportState.loading ? 'Preparing CSV…' : 'Download salary CSV'}
+                    </button>
+                    {exportState.error && <div className="employee-error" role="alert">{exportState.error}</div>}
+                  </div>
+                )}
               </div>
               {result?.error && (
                 <div className="employee-error" role="alert">
@@ -273,11 +435,8 @@ function AnalyticsPage() {
                         value={filters.currencyCode}
                         onChange={updateFilter}
                         disabled={currencyOptions.length === 0}
-                        required
                       >
-                        <option value="" disabled={currencyOptions.length > 0}>
-                          {results.country?.loading ? 'Loading currencies…' : 'Select a currency'}
-                        </option>
+                        <option value="">All currencies</option>
                         {currencyOptions.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
                       </select>
                     </label>
@@ -291,6 +450,19 @@ function AnalyticsPage() {
                       </select>
                     </label>
                     <label>
+                      Export country
+                      <select
+                        name="exportCountryCode"
+                        value={exportCountryCode}
+                        onChange={(event) => setExportCountryCode(event.target.value)}
+                      >
+                        <option value="">All countries</option>
+                        {highestPaidCountryOptions.map((country) => (
+                          <option key={country.code} value={country.code}>{country.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
                       As of
                       <input name="asOf" type="date" value={filters.asOf} onChange={updateFilter} />
                     </label>
@@ -300,6 +472,25 @@ function AnalyticsPage() {
                       Department filters could not be loaded: {results.departments.error}
                     </p>
                   )}
+                </section>
+              )}
+              {endpoint.key === 'highestPaid' && (
+                <section className="analytics-filters" aria-label="Highest-paid employee filters">
+                  <div className="analytics-filter-grid">
+                    <label>
+                      Highest-paid country
+                      <select
+                        name="highestPaidCountryCode"
+                        value={highestPaidCountryCode}
+                        onChange={(event) => setHighestPaidCountryCode(event.target.value)}
+                      >
+                        <option value="">India</option>
+                        {highestPaidCountryOptions.map((country) => (
+                          <option key={country.code} value={country.code}>{country.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 </section>
               )}
 
@@ -337,6 +528,93 @@ function AnalyticsPage() {
             </article>
           );
         })}
+        <article className="panel analytics-panel analytics-question-panel">
+          <div className="panel-heading">
+            <div><p className="eyebrow">ASK ABOUT YOUR DATA</p><h2>Questions</h2></div>
+          </div>
+          <form className="analytics-question-form" onSubmit={submitQuestion}>
+            <label>
+              Question
+              <input
+                name="question"
+                type="text"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                required
+              />
+            </label>
+            <button className="form-cancel" type="submit" disabled={questionResult.loading}>
+              {questionResult.loading ? 'Getting answer…' : 'Ask question'}
+            </button>
+          </form>
+          {questionResult.error && (
+            <div className="employee-error" role="alert">
+              <span>{questionResult.error}</span>
+              <button type="button" onClick={submitQuestion}>Retry</button>
+            </div>
+          )}
+          {questionResult.loading && !questionResult.data && (
+            <p className="analytics-message" role="status">Getting an answer…</p>
+          )}
+          {questionResult.data !== undefined && (
+            <div className="analytics-question-answer" aria-live="polite">
+              <div className="analytics-question-answer-heading">
+                <h3>Answer</h3>
+                {questionResponse?.status && (
+                  <span className="analytics-question-status">{formatLabel(questionResponse.status)}</span>
+                )}
+              </div>
+              {questionResponse?.question && (
+                <p className="analytics-question-prompt">{questionResponse.question}</p>
+              )}
+              {questionUnsupported ? (
+                <div className="analytics-question-supported">
+                  <p>This question type is not supported. Supported question types:</p>
+                  <ul>
+                    <li>Employee count</li>
+                    <li>Average</li>
+                    <li>Total</li>
+                    <li>Minimum</li>
+                    <li>Maximum</li>
+                  </ul>
+                </div>
+              ) : (
+                <>
+                  <p className="analytics-question-value">
+                    {questionResponse?.value !== undefined && questionResponse?.value !== null
+                      ? `${questionResponse.currency_code ? `${questionResponse.currency_code} ` : ''}${formatValue(questionResponse.value)}`
+                      : formatValue(questionResponse?.answer ?? questionResult.data)}
+                  </p>
+                  {(questionResponse?.metric || questionResponse?.employee_count !== undefined) && (
+                    <dl className="analytics-question-details">
+                      {questionResponse.metric && (
+                        <>
+                          <dt>Metric</dt>
+                          <dd>{formatLabel(questionResponse.metric)}</dd>
+                        </>
+                      )}
+                      {questionResponse.employee_count !== undefined && (
+                        <>
+                          <dt>Employees included</dt>
+                          <dd>{formatValue(questionResponse.employee_count)}</dd>
+                        </>
+                      )}
+                      {questionResponse.filters && Object.entries(questionResponse.filters).map(([key, value]) => (
+                        <Fragment key={key}>
+                          <dt>{formatLabel(key)}</dt>
+                          <dd>{formatValue(value)}</dd>
+                        </Fragment>
+                      ))}
+                    </dl>
+                  )}
+                  {questionResponse?.explanation && (
+                    <p className="analytics-question-explanation">{questionResponse.explanation}</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </article>
       </div>
     </section>
   );
