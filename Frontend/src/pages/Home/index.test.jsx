@@ -27,6 +27,12 @@ const departmentSalaries = [
   },
 ];
 
+const exchangeRates = [
+  { date: '2026-10-23', base: 'INR', quote: 'AUD', rate: 0.016 },
+  { date: '2026-10-23', base: 'INR', quote: 'USD', rate: 0.011 },
+  { date: '2026-10-23', base: 'INR', quote: 'JPY', rate: 1.7 },
+];
+
 function pagedResponse(content, number, totalPages, totalElements = 6, size = 5) {
   return {
     content,
@@ -57,11 +63,16 @@ afterEach(() => {
 });
 
 test('loads and displays the five most recent employees', async () => {
-  global.fetch.mockImplementation((url) => Promise.resolve(apiResponse(
-    String(url).includes('/api/v1/employees?')
-      ? pagedResponse([employee], 0, 2)
-      : departmentSalaries,
-  )));
+  global.fetch.mockImplementation((url) => {
+    const requestUrl = String(url);
+    return Promise.resolve(apiResponse(
+      requestUrl.includes('/v2/rates')
+        ? exchangeRates
+        : requestUrl.includes('/api/v1/employees?')
+          ? pagedResponse([employee], 0, 2)
+          : departmentSalaries,
+    ));
+  });
   window.localStorage.setItem('accessToken', 'test-token');
 
   render(<MemoryRouter><Home /></MemoryRouter>);
@@ -79,11 +90,16 @@ test('loads and displays the five most recent employees', async () => {
 });
 
 test('filters salary bars by the selected currency', async () => {
-  global.fetch.mockImplementation((url) => Promise.resolve(apiResponse(
-    String(url).includes('/api/v1/employees?')
-      ? pagedResponse([employee], 0, 2)
-      : departmentSalaries,
-  )));
+  global.fetch.mockImplementation((url) => {
+    const requestUrl = String(url);
+    return Promise.resolve(apiResponse(
+      requestUrl.includes('/v2/rates')
+        ? exchangeRates
+        : requestUrl.includes('/api/v1/employees?')
+          ? pagedResponse([employee], 0, 2)
+          : departmentSalaries,
+    ));
+  });
 
   render(<MemoryRouter><Home /></MemoryRouter>);
 
@@ -109,18 +125,56 @@ test('does not display employees beyond the first five', async () => {
     id: `employee-${index + 1}`,
     firstName: `Employee${index + 1}`,
   }));
-  global.fetch.mockImplementation((url) => Promise.resolve(apiResponse(
-    String(url).includes('/api/v1/employees?')
-      ? pagedResponse(employees, 0, 2, 6, 6)
-      : departmentSalaries,
-  )));
+  global.fetch.mockImplementation((url) => {
+    const requestUrl = String(url);
+    return Promise.resolve(apiResponse(
+      requestUrl.includes('/v2/rates')
+        ? exchangeRates
+        : requestUrl.includes('/api/v1/employees?')
+          ? pagedResponse(employees, 0, 2, 6, 6)
+          : departmentSalaries,
+    ));
+  });
 
   render(<MemoryRouter><Home /></MemoryRouter>);
 
   expect(await screen.findByText('Employee1 Morgan')).toBeInTheDocument();
   expect(screen.getByText('Employee5 Morgan')).toBeInTheDocument();
   expect(screen.queryByText('Employee6 Morgan')).not.toBeInTheDocument();
-  expect(global.fetch).toHaveBeenCalledTimes(2);
+  expect(global.fetch).toHaveBeenCalledTimes(3);
+});
+
+test('displays only supported currency rates and reloads for the selected base', async () => {
+  global.fetch.mockImplementation((url) => {
+    const requestUrl = String(url);
+    if (requestUrl.includes('/v2/rates')) {
+      return Promise.resolve(apiResponse(
+        requestUrl.includes('base=USD')
+          ? [{ date: '2026-10-23', base: 'USD', quote: 'INR', rate: 90 }]
+          : exchangeRates,
+      ));
+    }
+    return Promise.resolve(apiResponse(
+      requestUrl.includes('/api/v1/employees?') ? pagedResponse([employee], 0, 1) : departmentSalaries,
+    ));
+  });
+
+  render(<MemoryRouter><Home /></MemoryRouter>);
+
+  const baseCurrency = await screen.findByLabelText('Exchange rate base currency');
+  expect(baseCurrency).toHaveValue('INR');
+  expect(baseCurrency.querySelectorAll('option')).toHaveLength(7);
+  expect(await screen.findByRole('list', { name: 'Exchange rates with INR as base' })).toBeInTheDocument();
+  expect(screen.getByText('0.016')).toBeInTheDocument();
+  expect(screen.getByText('JPY')).not.toBeInTheDocument();
+
+  fireEvent.change(baseCurrency, { target: { value: 'USD' } });
+
+  expect(await screen.findByRole('list', { name: 'Exchange rates with USD as base' })).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith(
+    'https://api.frankfurter.dev/v2/rates?base=USD',
+    { signal: expect.any(AbortSignal) },
+  );
 });
 
 test('shows API authorization errors and offers a retry', async () => {
