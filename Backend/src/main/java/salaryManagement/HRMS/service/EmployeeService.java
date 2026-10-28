@@ -54,6 +54,15 @@ public class EmployeeService {
                 ));
     }
 
+    @Transactional(readOnly = true)
+    public Employee getEmployeeByEmployeeNumber(String employeeNumber) {
+        return employeeRepository.findByEmployeeNumber(employeeNumber)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Employee not found: " + employeeNumber
+                ));
+    }
+
     // Get all employees with pagination
     @Transactional(readOnly = true)
     public Page<EmployeeResponseDto> getAllEmployees(Pageable pageable) {

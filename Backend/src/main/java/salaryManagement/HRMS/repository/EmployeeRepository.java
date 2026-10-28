@@ -78,4 +78,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     Page<EmployeeListProjection> findAllEmployees(
             Pageable pageable
     );
+
+    Optional<Employee> findByEmployeeNumberOrEmail(String employeeNumber, String email);
 }
