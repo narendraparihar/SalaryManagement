@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import salaryManagement.HRMS.dto.EmployeeResponseDto;
 import salaryManagement.HRMS.model.Employee;
 import salaryManagement.HRMS.repository.EmployeeRepository;
 
@@ -53,10 +54,35 @@ public class EmployeeService {
                 ));
     }
 
+    @Transactional(readOnly = true)
+    public Employee getEmployeeByEmployeeNumber(String employeeNumber) {
+        return employeeRepository.findByEmployeeNumber(employeeNumber)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Employee not found: " + employeeNumber
+                ));
+    }
+
     // Get all employees with pagination
     @Transactional(readOnly = true)
-    public Page<Employee> getAllEmployees(Pageable pageable) {
-        return employeeRepository.findAll(pageable);
+    public Page<EmployeeResponseDto> getAllEmployees(Pageable pageable) {
+
+        return employeeRepository
+                .findAllEmployees(pageable)
+                .map(employee -> new EmployeeResponseDto(
+                        employee.getId(),
+                        employee.getEmployeeNumber(),
+                        employee.getFirstName(),
+                        employee.getLastName(),
+                        employee.getEmail(),
+                        employee.getCountryCode(),
+                        employee.getDepartmentId(),
+                        employee.getDepartmentName(),
+                        employee.getDesignationId(),
+                        employee.getDesignationName(),
+                        employee.getStatus(),
+                        employee.getHireDate()
+                ));
     }
 
     // Update employee
@@ -97,8 +123,15 @@ public class EmployeeService {
 
     // Delete employee
     public void deleteEmployee(UUID id) {
-        Employee employee = getEmployeeById(id);
-        employeeRepository.delete(employee);
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Employee not found: " + id
+                        ));
+
+        employee.setEmploymentStatus("INACTIVE");
+        employeeRepository.save(employee);
     }
 
 
