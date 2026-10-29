@@ -92,4 +92,13 @@ public class EmployeeController {
     ) {
         return employeeService.searchEmployees(keyword, pageable);
     }
+
+    @GetMapping("/employee-number/{employeeNumber}")
+    public ResponseEntity<Employee> getEmployeeByEmployeeNumber(
+            @PathVariable String employeeNumber) {
+
+        return ResponseEntity.ok(
+                employeeService.getEmployeeByEmployeeNumber(employeeNumber)
+        );
+    }
 }
