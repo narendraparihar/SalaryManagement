@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithAuth } from '../../api';
+import AddSalaryForm from './AddSalaryForm';
 import './style.scss';
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
@@ -50,6 +51,7 @@ function SalariesPage() {
   const [editValues, setEditValues] = useState(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
+  const [isAddingSalary, setIsAddingSalary] = useState(false);
 
   function startEditing(salary) {
     setSalaryToEdit(salary.id);
@@ -222,17 +224,33 @@ function SalariesPage() {
           <h1>Salary<span className="heading-period">.</span></h1>
           <p className="intro-copy">Review current compensation and effective dates.</p>
         </div>
-        <label className="employee-search">
-          <span className="visually-hidden">Search salaries by employee name</span>
-          <input
-            type="search"
-            aria-label="Search salaries by employee name"
-            placeholder="Search by employee name"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </label>
+        <div className="salary-page-actions">
+          <label className="employee-search">
+            <span className="visually-hidden">Search salaries by employee name</span>
+            <input
+              type="search"
+              aria-label="Search salaries by employee name"
+              placeholder="Search by employee name"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </label>
+          <button className="primary-button" type="button" onClick={() => setIsAddingSalary(true)}>
+            <span aria-hidden="true">+</span> Add salary
+          </button>
+        </div>
       </div>
+
+      {isAddingSalary && (
+        <AddSalaryForm
+          onCancel={() => setIsAddingSalary(false)}
+          onSuccess={() => {
+            setIsAddingSalary(false);
+            setPageIndex(0);
+            setReload((current) => current + 1);
+          }}
+        />
+      )}
 
       <div className="route-summary">
         <span>

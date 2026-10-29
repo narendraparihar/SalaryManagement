@@ -2,6 +2,134 @@
   min-width: 980px;
 }
 
+.salary-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.add-salary-panel {
+  margin-bottom: 16px;
+  padding: 19px;
+}
+
+.add-salary-panel .panel-heading {
+  margin-bottom: 16px;
+}
+
+.salary-create-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.salary-employee-field,
+.salary-details-fields {
+  grid-column: 1 / -1;
+}
+
+.salary-details-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.salary-create-form label,
+.salary-employee-field > label {
+  display: grid;
+  gap: 6px;
+  color: #586860;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.salary-create-form input,
+.salary-create-form select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dce4de;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.salary-create-form input:focus,
+.salary-create-form select:focus {
+  border-color: var(--green);
+  outline: 2px solid rgb(24 120 95 / 12%);
+}
+
+.salary-employee-input {
+  display: flex;
+  gap: 8px;
+}
+
+.salary-employee-input input {
+  min-width: 0;
+  flex: 1;
+}
+
+.employee-verify-button {
+  padding: 0 12px;
+  border: 1px solid var(--green);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--green);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.employee-verify-button:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
+.employee-verified {
+  color: var(--green);
+  font-size: 11px;
+}
+
+.salary-create-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.salary-create-actions .primary-button:disabled,
+.form-cancel:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
+.salary-form-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 13px;
+  color: #9d503b;
+  font-size: 11px;
+}
+
+.salary-form-error button {
+  padding: 5px 8px;
+  border: 1px solid #f0d6ce;
+  border-radius: 4px;
+  background: #fff8f5;
+  color: #9d503b;
+  cursor: pointer;
+  font: inherit;
+}
+
+.salary-form-optional {
+  color: #87938d;
+  font-weight: 400;
+}
+
 .salary-edit-input {
   min-width: 0;
   padding: 6px;
@@ -94,4 +222,20 @@
 .salaries-table .employee-edit-button:disabled {
   cursor: not-allowed;
   opacity: .6;
+}
+
+@media (max-width: 760px) {
+  .salary-page-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .salary-create-form {
+    grid-template-columns: 1fr;
+  }
+
+  .salary-details-fields {
+    grid-template-columns: 1fr;
+  }
 }
