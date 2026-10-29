@@ -370,10 +370,10 @@ function Home() {
               ) : recentEmployees.map((employee) => (
                 <tr key={employee.id}>
                   <td><span className="table-person"><span className="avatar">{getInitials(employee)}</span><strong>{employee.firstName} {employee.lastName}</strong></span></td>
-                  <td>{employee.departmentId ? `Department ${employee.departmentId}` : '—'}</td>
+                  <td>{employee.departmentName || '—'}</td>
                   <td>{employee.countryCode || '—'}</td>
                   <td>{formatDate(employee.hireDate)}</td>
-                  <td><span className="status-pill">{employee.employmentStatus || 'Unknown'}</span></td>
+                  <td><span className="status-pill">{employee.status || 'Unknown'}</span></td>
                 </tr>
               ))}
             </tbody>

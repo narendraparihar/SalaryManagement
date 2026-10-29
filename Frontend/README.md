@@ -18,6 +18,8 @@ Select an employee to edit their details with `PUT /api/v1/employees/{id}`. The 
 
 Use the edit button on a salary row to update its amount, currency, or effective dates with `PATCH /api/v1/salaries/{id}`.
 
+Use **Add salary** on the salary page to select an employee and submit compensation details to `POST /api/v1/employees/{id}/salaries`.
+
 Use `#/signup` to create an account and `#/login` to sign in. Successful sign-in stores the backend's `accessToken` in `localStorage` and navigates to `#/dashboard`. Protected API requests use it as a bearer token; a `401` or `403` response clears the token and redirects to sign-in.
 
 Set `REACT_APP_API_BASE_URL` in the frontend environment to the backend origin when it is not `http://localhost:8080`. The backend's `APP_CORS_ALLOWED_ORIGINS` setting accepts a comma-separated list of frontend origins and defaults to `http://localhost:3000`.

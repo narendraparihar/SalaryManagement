@@ -56,7 +56,7 @@ public class SalaryService {
         salary.setCurrency(request.currency().toUpperCase());
         salary.setEffectiveFrom(request.effectiveFrom());
         salary.setEffectiveTo(request.effectiveTo());
-
+        salary.setCreatedAt(LocalDate.now());
         String username = currentUsername();
         salary.setCreatedBy(username);
 
