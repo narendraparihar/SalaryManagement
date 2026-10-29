@@ -17,5 +17,4 @@ build/
 .DS_Store
 
 # Local configuration & environment variables
-.env
-.env.local
+**/src/main/resources/application.properties
