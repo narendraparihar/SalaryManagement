@@ -32,9 +32,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public JwtAuthenticationFilter(
             @Value("${app.jwt.secret}") String secret) {
 
-        // Configure jwt.secret as a Base64-encoded key.
         byte[] keyBytes = Decoders.BASE64.decode(secret);
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    // Skip CORS preflight requests
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
     @Override
@@ -47,10 +52,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authorizationHeader =
                 request.getHeader("Authorization");
 
-
-
-        // No bearer token: continue. Protected endpoints will
-        // be rejected by Spring Security if authentication is required.
         if (authorizationHeader == null
                 || !authorizationHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -84,12 +85,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Don't replace an existing authentication.
             if (SecurityContextHolder.getContext()
                     .getAuthentication() == null) {
 
-                // Assumes the JWT contains a string-list claim named
-                // "roles", e.g. ["ROLE_ADMIN", "ROLE_HR"].
                 List<SimpleGrantedAuthority> authorities =
                         extractAuthorities(claims);
 
