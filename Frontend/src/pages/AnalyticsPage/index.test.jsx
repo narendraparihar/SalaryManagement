@@ -210,7 +210,7 @@ test('submits a question and as-of date to the questions API', async () => {
       },
       body: JSON.stringify({
         question: 'What is the min annual salary in India?',
-        as_of_date: '2026-11-01',
+        as_of_date: new Date().toISOString().split('T')[0],
       }),
     }),
   );
