@@ -97,7 +97,7 @@ function AnalyticsPage() {
   const [exportCountryCode, setExportCountryCode] = useState('');
   const [exportState, setExportState] = useState({ loading: false, error: '' });
   const [question, setQuestion] = useState('What is the max annual salary in India?');
-  const [questionAsOfDate, setQuestionAsOfDate] = useState('2026-11-01');
+  const [questionAsOfDate] = useState(Date.now().toISOString().split('T')[0]);
   const [questionResult, setQuestionResult] = useState({ loading: false, data: undefined, error: '' });
   const questionResponse = questionResult.data && typeof questionResult.data === 'object'
     && !Array.isArray(questionResult.data)
